@@ -71,3 +71,7 @@ output "deployment_summary" {
     https_only         = true
   }
 }
+output "frontdoor_endpoint_url" {
+  description = "Azure Front Door endpoint URL"
+  value       = "https://${azurerm_cdn_frontdoor_endpoint.main.name}.azurefd.net"
+}

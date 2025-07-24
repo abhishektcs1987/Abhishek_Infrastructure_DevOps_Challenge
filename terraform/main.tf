@@ -298,3 +298,67 @@ resource "azurerm_storage_blob" "health_check" {
 
   depends_on = [azurerm_storage_account_static_website.static_site]
 }
+
+# Enforce WAF by routing traffic only through Azure Front Door
+
+resource "azurerm_cdn_frontdoor_endpoint" "main" {
+  name                      = "fde-${random_string.suffix.result}"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.main.id
+  tags                     = var.default_tags
+}
+
+resource "azurerm_cdn_frontdoor_origin_group" "main" {
+  name                      = "origin-group"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.main.id
+  session_affinity_enabled = false
+
+  load_balancing {
+    sample_size                 = 4
+    successful_samples_required = 3
+  }
+
+  health_probe {
+    protocol           = "Https"
+    interval_in_seconds = 120
+    path               = "/health"
+    request_type       = "GET"
+  }
+}
+
+resource "azurerm_cdn_frontdoor_origin" "main" {
+  name                          = "origin"
+  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.main.id
+  host_name                     = azurerm_storage_account.main.primary_web_host
+  http_port                     = 80
+  https_port                    = 443
+  origin_host_header            = azurerm_storage_account.main.primary_web_host
+  certificate_name_check_enabled = true
+  enabled                       = true
+  priority                      = 1
+  weight                        = 1000
+}
+
+resource "azurerm_cdn_frontdoor_rule_set" "main" {
+  name                     = "defaultruleset"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.main.id
+}
+
+resource "azurerm_cdn_frontdoor_route" "main" {
+  name                          = "default-route"
+  cdn_frontdoor_endpoint_id     = azurerm_cdn_frontdoor_endpoint.main.id
+  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.main.id
+  cdn_frontdoor_origin_ids      = [azurerm_cdn_frontdoor_origin.main.id]
+  supported_protocols           = ["Https"]
+  patterns_to_match             = ["/*"]
+  https_redirect_enabled        = true
+  forwarding_protocol           = "HttpsOnly"
+  link_to_default_domain        = true
+  cdn_frontdoor_rule_set_ids    = [azurerm_cdn_frontdoor_rule_set.main.id]
+}
+
+# Restrict storage account public access
+resource "azurerm_storage_account_network_rules" "main" {
+  storage_account_id = azurerm_storage_account.main.id
+  default_action      = "Deny"
+  bypass              = ["AzureServices"]
+}
