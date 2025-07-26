@@ -32,7 +32,7 @@ resource "azurerm_storage_account" "main" {
   resource_group_name      = azurerm_resource_group.main.name
   location                 = azurerm_resource_group.main.location
   account_tier             = "Standard"
-  account_replication_type = "GRS" # Changed to GRS for high availability
+  account_replication_type = "GRS"  # Changed to GRS for high availability
 
   # Security configurations
   public_network_access_enabled   = true
@@ -92,7 +92,7 @@ resource "azurerm_storage_blob" "health_check" {
   content_type           = "application/json"
   source_content = jsonencode({
     status    = "healthy"
-    timestamp = formatdate("RFC3339", timestamp())
+    timestamp = formatdate("YYYY-MM-DD'T'hh:mm:ssZ", timestamp())
     version   = "1.0.0"
     service   = "static-web-app"
   })
@@ -204,8 +204,8 @@ resource "azurerm_cdn_frontdoor_origin_group" "main" {
   session_affinity_enabled = false
 
   load_balancing {
-    sample_size                        = 4
-    successful_samples_required        = 3
+    sample_size                 = 4
+    successful_samples_required = 3
     additional_latency_in_milliseconds = 50
   }
 
@@ -392,9 +392,9 @@ resource "azurerm_network_security_group" "main" {
 
 # Restrict storage account to only allow access from Front Door
 resource "azurerm_storage_account_network_rules" "main" {
-  storage_account_id = azurerm_storage_account.main.id
-  default_action     = "Allow" # Allow for static website hosting
-  bypass             = ["AzureServices"]
+  storage_account_id         = azurerm_storage_account.main.id
+  default_action             = "Allow"  # Allow for static website hosting
+  bypass                     = ["AzureServices"]
 
   # In production, you would restrict this further
   # For demo purposes, we allow public access but Front Door provides the security layer
@@ -491,8 +491,8 @@ resource "azurerm_monitor_metric_alert" "storage_availability" {
 
 # Diagnostic settings for Front Door
 resource "azurerm_monitor_diagnostic_setting" "frontdoor" {
-  name                       = "frontdoor-diagnostics"
-  target_resource_id         = azurerm_cdn_frontdoor_profile.main.id
+  name               = "frontdoor-diagnostics"
+  target_resource_id = azurerm_cdn_frontdoor_profile.main.id
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
 
   enabled_log {
@@ -510,8 +510,8 @@ resource "azurerm_monitor_diagnostic_setting" "frontdoor" {
 
 # Diagnostic settings for Storage Account
 resource "azurerm_monitor_diagnostic_setting" "storage" {
-  name                       = "storage-diagnostics"
-  target_resource_id         = azurerm_storage_account.main.id
+  name               = "storage-diagnostics"
+  target_resource_id = azurerm_storage_account.main.id
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
 
   metric {
@@ -534,11 +534,11 @@ resource "azurerm_cdn_frontdoor_custom_domain" "main" {
 
 # Associate custom domain with the route
 resource "azurerm_cdn_frontdoor_route" "custom_domain" {
-  count                           = var.custom_domain != "" ? 1 : 0
-  name                            = "custom-domain-route"
-  cdn_frontdoor_endpoint_id       = azurerm_cdn_frontdoor_endpoint.main.id
-  cdn_frontdoor_origin_group_id   = azurerm_cdn_frontdoor_origin_group.main.id
-  cdn_frontdoor_origin_ids        = [azurerm_cdn_frontdoor_origin.main.id]
+  count                         = var.custom_domain != "" ? 1 : 0
+  name                          = "custom-domain-route"
+  cdn_frontdoor_endpoint_id     = azurerm_cdn_frontdoor_endpoint.main.id
+  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.main.id
+  cdn_frontdoor_origin_ids      = [azurerm_cdn_frontdoor_origin.main.id]
   cdn_frontdoor_custom_domain_ids = [azurerm_cdn_frontdoor_custom_domain.main[0].id]
 
   supported_protocols    = ["Https"]
