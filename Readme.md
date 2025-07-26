@@ -4,83 +4,89 @@ This Terraform configuration deploys a secure, scalable static web application o
 
 ## 🏗️ Architecture Overview
 
-- **Azure Storage Account**: Hosts static website content
+- **Azure Storage Account**: Hosts static website content with GRS replication
 - **Azure Front Door**: Global CDN with SSL termination and WAF protection
-- **Web Application Firewall (WAF)**: Protects against common web attacks
+- **Web Application Firewall (WAF)**: Protects against common web attacks and bot traffic
 - **Application Insights**: Application monitoring and analytics
 - **Log Analytics**: Centralized logging and monitoring
 - **Network Security Groups**: Network-level security controls
-- **Automated Alerts**: Email notifications for issues
+- **Automated Alerts**: Email notifications for availability and performance issues
+- **Health Check Endpoints**: Both HTML and JSON endpoints for monitoring
 
 ## ✅ Requirements Met
 
-- ✅ **Static Web Application**: Serves HTML content via Azure Storage
-- ✅ **Infrastructure as Code**: Complete Terraform configuration
-- ✅ **HTTPS Enforcement**: HTTP automatically redirects to HTTPS
-- ✅ **SSL/TLS Certificates**: Azure-managed certificates with TLS 1.2+
-- ✅ **Security**: Network restrictions, WAF, security headers
-- ✅ **High Availability**: Global CDN, GRS storage replication
-- ✅ **Auto-scaling**: Inherent Azure platform scaling
-- ✅ **Monitoring**: Application Insights, Log Analytics, alerts
-- ✅ **Automated Testing**: Comprehensive test script
+- ✅ **Static Web Application**: Serves HTML content via Azure Storage with global CDN
+- ✅ **Infrastructure as Code**: Complete Terraform configuration with modular design
+- ✅ **HTTPS Enforcement**: HTTP automatically redirects to HTTPS with security headers
+- ✅ **SSL/TLS Certificates**: Azure-managed certificates with TLS 1.2+ minimum
+- ✅ **Security**: WAF protection, network restrictions, security headers, rate limiting
+- ✅ **High Availability**: Global CDN, GRS storage replication, health checks
+- ✅ **Auto-scaling**: Inherent Azure platform scaling with Front Door load balancing
+- ✅ **Monitoring**: Application Insights, Log Analytics, metric alerts, diagnostic logging
+- ✅ **Automated Testing**: Comprehensive test script with 14 different test categories
 
 ## 📋 Prerequisites
 
-1. **Azure CLI** installed and configured
-2. **Terraform** >= 1.0 installed
-3. **Azure Subscription** with appropriate permissions
-4. **Bash shell** for running test scripts
+1. **Azure CLI** installed and configured (`az --version`)
+2. **Terraform** >= 1.0 installed (`terraform --version`)
+3. **Azure Subscription** with Contributor or Owner permissions
+4. **Bash shell** for running deployment and test scripts
+5. **curl** and **openssl** for testing (usually pre-installed)
 
 ## 🚀 Quick Start
 
-### 1. Clone and Setup
+### **Option 1: Automated Deployment (Recommended)**
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd static-web-azure
+# Make the deployment script executable
+chmod +x deploy.sh
 
-# Login to Azure
+# Run the automated deployment
+./deploy.sh
+```
+
+The automated script handles everything:
+- Prerequisites checking
+- Azure login verification
+- Configuration file creation
+- Infrastructure deployment
+- Post-deployment testing
+
+### **Option 2: Manual Deployment**
+
+#### 1. **Setup Configuration**
+
+```bash
+# Copy the example configuration
+cp terraform.tfvars.example terraform.tfvars
+
+# Edit with your settings
+nano terraform.tfvars
+```
+
+#### 2. **Deploy Infrastructure**
+
+```bash
+# Login to Azure (if not already logged in)
 az login
 
-# Set your subscription (optional)
-az account set --subscription "your-subscription-id"
-```
-
-### 2. Configure Variables
-
-Edit `terraform.tfvars` (create if doesn't exist):
-
-```hcl
-# Required variables
-alert_email = "your-email@domain.com"
-project_name = "mywebapp"
-location = "East US"
-
-# Optional variables
-custom_domain = "www.yourdomain.com"  # Leave empty if no custom domain
-enable_waf = true
-environment = "prod"
-retention_days = 30
-```
-
-### 3. Deploy Infrastructure
-
-```bash
 # Initialize Terraform
 terraform init
 
-# Review the deployment plan
+# Validate configuration
+terraform validate
+
+# Review deployment plan
 terraform plan
 
-# Deploy the infrastructure
+# Deploy infrastructure
 terraform apply
 ```
 
-### 4. Run Tests
+#### 3. **Run Tests**
 
 ```bash
-# Make the test script executable
+# Make test script executable
 chmod +x web_test.sh
 
 # Run comprehensive tests
@@ -90,39 +96,84 @@ chmod +x web_test.sh
 ## 📁 Project Structure
 
 ```
-├── main.tf                 # Main infrastructure configuration
-├── variables.tf            # Input variables
-├── outputs.tf             # Output values
-├── versions.tf            # Provider versions
-├── web_test.sh            # Automated test script
+├── main.tf                      # Main infrastructure configuration
+├── variables.tf                 # Input variables with validation
+├── outputs.tf                   # Output values and monitoring URLs
+├── versions.tf                  # Provider versions and backend config
+├── deploy.sh                    # Automated deployment script
+├── web_test.sh                  # Comprehensive test script
 ├── static/
-│   ├── index.html         # Main webpage
-│   └── 404.html          # Error page
-└── README.md             # This file
+│   ├── index.html              # Main webpage (Hello World)
+│   └── 404.html                # Custom error page
+└── README.md                   # This documentation
 ```
 
 ## 🔧 Configuration Options
 
-### Variables
+### Required Variables
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `alert_email` | Email for alerts | admin@fmc.com | Yes |
-| `project_name` | Project name | staticwebhosting | No |
-| `location` | Azure region | East US | No |
-| `custom_domain` | Custom domain | "" | No |
-| `enable_waf` | Enable WAF | true | No |
-| `environment` | Environment | prod | No |
-| `retention_days` | Log retention | 30 | No |
+| Variable | Description | Example | Notes |
+|----------|-------------|---------|-------|
+| `alert_email` | Email for monitoring alerts | `admin@company.com` | Must be valid email address |
+
+### Optional Variables
+
+| Variable | Description | Default | Options |
+|----------|-------------|---------|---------|
+| `project_name` | Project identifier | `staticwebhosting` | Lowercase letters/numbers only |
+| `location` | Azure region | `East US` | Any valid Azure region |
+| `custom_domain` | Custom domain name | `""` | Leave empty to disable |
+| `enable_waf` | Enable Web Application Firewall | `true` | true/false |
+| `environment` | Environment type | `prod` | dev/staging/prod |
+| `retention_days` | Log retention period | `30` | 7-730 days |
+| `health_check_interval` | Health check frequency | `30` | 30-300 seconds |
+| `cache_duration` | Content cache duration | `24` | 1-8760 hours |
+
+### Example terraform.tfvars
+
+```hcl
+# Required
+alert_email = "admin@yourcompany.com"
+
+# Basic Configuration
+project_name = "mywebapp"
+location = "East US"
+environment = "prod"
+
+# Security & Performance
+enable_waf = true
+retention_days = 30
+health_check_interval = 30
+cache_duration = 24
+
+# Custom Domain (optional)
+custom_domain = "www.yourdomain.com"  # or "" to disable
+
+# Custom Tags (optional)
+default_tags = {
+  Environment = "production"
+  Project     = "static-web-app"
+  Owner       = "Platform Team"
+  CostCenter  = "Engineering"
+}
+```
 
 ### Custom Domain Setup
 
-To use a custom domain:
+To configure a custom domain:
 
-1. Set `custom_domain` variable to your domain
-2. Deploy the infrastructure
-3. Create a CNAME record pointing to the Front Door endpoint
-4. Azure will automatically provision SSL certificate
+1. **Set the variable**: Update `custom_domain` in `terraform.tfvars`
+2. **Deploy infrastructure**: Run `terraform apply`
+3. **Create DNS record**: Add CNAME pointing to Front Door endpoint
+4. **Wait for SSL**: Azure automatically provisions SSL certificate (up to 24 hours)
+
+Example DNS configuration:
+```
+Type: CNAME
+Name: www
+Value: your-endpoint.azurefd.net
+TTL: 300
+```
 
 ## 🔍 Monitoring and Alerts
 
@@ -169,105 +220,386 @@ terraform output monitoring_urls
 - X-Frame-Options: DENY
 - X-XSS-Protection: 1; mode=block
 
-## 🧪 Testing
+## 🧪 Testing & Validation
 
-### Automated Tests
+### Automated Test Suite
 
-The `web_test.sh` script performs comprehensive testing:
+The `web_test.sh` script provides comprehensive testing across 14 categories:
 
-- Terraform validation
-- HTTPS enforcement
-- SSL certificate validation
-- Security headers check
-- Content delivery
-- Health check endpoints
-- Performance testing
-- WAF functionality
-- Infrastructure validation
+#### **Pre-Deployment Tests (Always Run)**
+1. **Terraform Validation**: Format checking, syntax validation, plan generation
+2. **Configuration Validation**: Variable validation, resource dependencies
 
-### Manual Testing
+#### **Post-Deployment Tests (After `terraform apply`)**
+3. **Connectivity Tests**: Basic reachability, response codes
+4. **HTTPS Enforcement**: HTTP→HTTPS redirects, SSL certificate validation
+5. **Security Headers**: HSTS, XSS protection, content-type options
+6. **Content Delivery**: Main page content, 404 error handling
+7. **Health Check Endpoints**: Both `/health` (HTML) and `/health.json` endpoints
+8. **Performance Tests**: Response time measurement, compression validation
+9. **WAF Protection**: Malicious request blocking (if WAF enabled)
+10. **Infrastructure Validation**: Resource count, deployment completeness
+11. **Monitoring Setup**: Application Insights, Log Analytics workspace
+12. **SSL Certificate**: Certificate validity, expiration, chain validation
+13. **DNS Resolution**: Domain resolution, CDN endpoint accessibility
+14. **Load Balancing**: Origin health, failover capability
+
+### Running Tests
 
 ```bash
-# Test the website
+# Test before deployment (validation only)
+./web_test.sh
+# Output: ⚠️ Infrastructure not deployed. Skipping live tests.
+
+# Test after deployment (full test suite)
+terraform apply
+./web_test.sh
+# Output: ✅ All tests completed successfully!
+```
+
+### Test Report Generation
+
+The test script automatically generates detailed reports:
+
+```bash
+# Report saved as: test_report_YYYYMMDD_HHMMSS.txt
+cat test_report_20250127_143022.txt
+```
+
+### Manual Testing Commands
+
+```bash
+# Test website accessibility
 curl -I https://your-endpoint.azurefd.net
 
-# Test health check
+# Test HTTPS redirect
+curl -I http://your-endpoint.azurefd.net
+
+# Test health endpoints
 curl https://your-endpoint.azurefd.net/health
+curl https://your-endpoint.azurefd.net/health.json
 
-# Test WAF (should be blocked)
+# Test WAF protection (should return 403)
 curl "https://your-endpoint.azurefd.net/?id=1' OR '1'='1"
+
+# Test SSL certificate
+echo | openssl s_client -servername your-domain.com -connect your-domain.com:443 | openssl x509 -noout -dates
+
+# Test response time
+curl -o /dev/null -s -w "Response time: %{time_total}s\n" https://your-endpoint.azurefd.net
 ```
 
-## 🔄 Maintenance
+## 🔄 Maintenance & Updates
 
-### Updates
+### Updating Static Content
 
 ```bash
-# Update Terraform configuration
+# Edit HTML files
+nano static/index.html
+nano static/404.html
+
+# Deploy changes
+terraform apply
+# Only the changed files will be updated
+```
+
+### Infrastructure Updates
+
+```bash
+# Update configuration
+nano terraform.tfvars
+
+# Preview changes
 terraform plan
-terraform apply
 
-# Update static content
-# Edit files in static/ directory, then:
+# Apply updates
 terraform apply
 ```
 
-### Monitoring
+### Monitoring and Maintenance
 
 ```bash
-# Check resource status
-az resource list --resource-group $(terraform output -raw resource_group_name)
+# Check resource health
+az resource list --resource-group $(terraform output -raw resource_group_name) --query "[].{Name:name,Type:type,Location:location}" --output table
 
 # View Front Door metrics
-az monitor metrics list --resource $(terraform output -raw frontdoor_profile_name)
+az monitor metrics list \
+  --resource $(terraform output -raw frontdoor_profile_name) \
+  --resource-group $(terraform output -raw resource_group_name) \
+  --resource-type "Microsoft.Cdn/profiles"
+
+# Check storage account metrics
+az monitor metrics list \
+  --resource $(terraform output -raw storage_account_name) \
+  --resource-group $(terraform output -raw resource_group_name) \
+  --resource-type "Microsoft.Storage/storageAccounts"
+
+# Review Application Insights
+# Use the monitoring URLs from: terraform output monitoring_urls
+```
+
+### Scaling and Performance Optimization
+
+The infrastructure automatically scales, but you can optimize:
+
+```hcl
+# In terraform.tfvars
+cache_duration = 48              # Increase cache time for better performance
+health_check_interval = 60       # Reduce health check frequency if needed
+retention_days = 90             # Increase log retention for compliance
+```
+
+### Backup and Disaster Recovery
+
+```bash
+# Export Terraform state (backup)
+terraform state pull > terraform-state-backup.json
+
+# List all resources for documentation
+terraform state list > resources.txt
+
+# The infrastructure includes:
+# - GRS storage replication (automatic)
+# - Global CDN distribution (high availability)
+# - Multi-region Front Door (disaster recovery)
 ```
 
 ## 🗑️ Cleanup
 
+### Destroy Infrastructure
+
 ```bash
+# Preview what will be destroyed
+terraform plan -destroy
+
 # Destroy all resources
 terraform destroy
 
-# Confirm destruction
-# Type 'yes' when prompted
+# Confirm by typing 'yes'
+# This will remove all billable resources
+```
+
+### Partial Cleanup
+
+```bash
+# Disable WAF to reduce costs
+echo 'enable_waf = false' >> terraform.tfvars
+terraform apply
+
+# Reduce log retention
+echo 'retention_days = 7' >> terraform.tfvars
+terraform apply
 ```
 
 ## 📊 Cost Optimization
 
-- **Storage**: Standard LRS for cost efficiency
-- **Front Door**: Standard tier for basic features
-- **Logs**: 30-day retention (configurable)
-- **Alerts**: Email-only notifications
+### Estimated Monthly Costs (East US region)
+
+- **Storage Account (Standard LRS)**: ~$0.02/GB
+- **Front Door (Standard)**: ~$22.00 + data transfer
+- **Application Insights**: ~$2.30/GB ingested
+- **Log Analytics**: ~$2.30/GB ingested
+- **WAF Policy**: ~$1.00 + request charges
+
+**Total estimated cost**: $30-50/month for typical small website
+
+### Cost Reduction Tips
+
+```hcl
+# In terraform.tfvars - optimize for cost
+retention_days = 7           # Minimum log retention
+enable_waf = false          # Disable WAF if not needed
+cache_duration = 168        # 1 week cache (reduce origin requests)
+```
+
+### Monitoring Costs
+
+```bash
+# View cost analysis in Azure Portal
+az consumption usage list --start-date 2025-01-01 --end-date 2025-01-31
+```
 
 ## 🆘 Troubleshooting
 
-### Common Issues
+### Common Issues and Solutions
 
-1. **Custom Domain SSL Issues**
-    - Ensure CNAME record is properly configured
-    - Allow up to 24 hours for SSL certificate provisioning
+#### **Deployment Issues**
 
-2. **WAF Blocking Legitimate Traffic**
-    - Review WAF logs in Log Analytics
-    - Adjust rules or create exceptions
+**Error: "formatdate invalid format"**
+```bash
+# Fixed in latest version - ensure you have the updated main.tf
+terraform validate  # Should pass without errors
+```
 
-3. **Health Check Failures**
-    - Verify storage account static website is enabled
-    - Check network security group rules
+**Error: "No outputs found"**
+```bash
+# This is normal before deployment
+terraform apply    # Deploy first
+./web_test.sh      # Then run tests
+```
+
+**Error: Custom domain SSL certificate issues**
+```bash
+# Check DNS configuration
+nslookup your-domain.com
+dig CNAME www.your-domain.com
+
+# Wait up to 24 hours for SSL provisioning
+# Check certificate status in Azure Portal
+```
+
+**Error: WAF blocking legitimate traffic**
+```bash
+# Review WAF logs
+az monitor log-analytics query \
+  --workspace $(terraform output -raw log_analytics_workspace_id) \
+  --analytics-query "AzureDiagnostics | where Category == 'FrontdoorWebApplicationFirewallLog'"
+
+# Adjust WAF rules if needed
+# Consider creating exception rules for false positives
+```
+
+#### **Performance Issues**
+
+**Slow response times**
+```bash
+# Check CDN cache hit ratio
+# Review Front Door metrics in Azure Portal
+# Consider adjusting cache duration in terraform.tfvars
+cache_duration = 48  # Increase cache time
+```
+
+**Health check failures**
+```bash
+# Verify health endpoints
+curl https://your-endpoint.azurefd.net/health
+curl https://your-endpoint.azurefd.net/health.json
+
+# Check storage account static website configuration
+az storage blob show \
+  --account-name $(terraform output -raw storage_account_name) \
+  --container-name '$web' \
+  --name 'health'
+```
+
+#### **Security Issues**
+
+**Missing security headers**
+```bash
+# Security headers are applied via Front Door rules
+# Check rule configuration in Azure Portal
+# Headers may take a few minutes to propagate globally
+```
+
+**WAF not blocking attacks**
+```bash
+# Verify WAF is enabled
+terraform output waf_policy_name
+
+# Check WAF policy rules
+az network front-door waf-policy show \
+  --name $(terraform output -raw waf_policy_name) \
+  --resource-group $(terraform output -raw resource_group_name)
+```
 
 ### Getting Help
 
-1. Check Terraform plan output for errors
-2. Review Azure Portal for resource status
-3. Run the test script for detailed diagnostics
-4. Check Application Insights for application errors
+1. **Check Terraform validation**: `terraform validate`
+2. **Review Azure Portal**: Check resource status and logs
+3. **Run diagnostic tests**: `./web_test.sh` for detailed diagnostics
+4. **Check Application Insights**: Review application errors and performance
+5. **Review test reports**: Generated automatically by test script
 
-## 📈 Performance Characteristics
+### Debug Commands
 
-- **Global CDN**: Sub-second response times worldwide
-- **High Availability**: 99.99% uptime SLA
-- **Auto-scaling**: Handles traffic spikes automatically
-- **Security**: Enterprise-grade protection
+```bash
+# Show all Terraform outputs
+terraform output
+
+# Show detailed deployment summary
+terraform output deployment_summary
+
+# Show monitoring URLs for Azure Portal
+terraform output monitoring_urls
+
+# Check resource group contents
+az resource list --resource-group $(terraform output -raw resource_group_name) --output table
+
+# View Front Door configuration
+az afd profile show --profile-name $(terraform output -raw frontdoor_profile_name) --resource-group $(terraform output -raw resource_group_name)
+```
+
+## 📈 Performance & Security Characteristics
+
+### Performance Metrics
+
+- **Global CDN**: Sub-second response times worldwide via Azure Front Door
+- **High Availability**: 99.99% uptime SLA with automatic failover
+- **Auto-scaling**: Handles traffic spikes automatically (serverless architecture)
+- **Caching**: Configurable cache duration (default 24 hours)
+- **Compression**: Automatic gzip compression for text content
+- **HTTP/2**: Enabled by default for better performance
+
+### Security Features
+
+#### **Network Security**
+- HTTPS enforcement with automatic HTTP→HTTPS redirects
+- TLS 1.2+ minimum with Azure-managed certificates
+- Network Security Groups with restrictive inbound rules
+- Storage account restricted to necessary access only
+
+#### **Web Application Firewall (WAF)**
+- Microsoft Default Rule Set (OWASP Core Rules)
+- Bot Manager Rule Set for automated threat protection
+- Custom rate limiting (100 requests/minute by default)
+- Real-time threat intelligence and blocking
+- DDoS protection via Azure Front Door
+
+#### **Security Headers**
+- `Strict-Transport-Security`: Forces HTTPS for 1 year
+- `X-Content-Type-Options: nosniff`: Prevents MIME type sniffing
+- `X-Frame-Options: DENY`: Prevents clickjacking attacks
+- `X-XSS-Protection: 1; mode=block`: XSS protection for legacy browsers
+
+#### **Data Protection**
+- Storage encryption at rest (Microsoft-managed keys)
+- Data replication across multiple Azure regions (GRS)
+- Blob versioning enabled for accidental deletion protection
+- 7-day delete retention policy for recovery
+
+### Monitoring & Observability
+
+#### **Application Insights**
+- Real-time application performance monitoring
+- User behavior analytics and session tracking
+- Dependency tracking and failure analysis
+- Custom telemetry and business metrics
+
+#### **Log Analytics**
+- Centralized logging for all Azure resources
+- Custom queries and dashboards
+- Integration with Azure Monitor alerts
+- Configurable retention (7-730 days)
+
+#### **Automated Alerts**
+- Front Door availability monitoring (< 95% triggers alert)
+- Response time alerts (> 2 seconds triggers alert)
+- Storage availability monitoring (< 99% triggers alert)
+- Custom error rate monitoring (4xx/5xx responses)
+
+#### **Health Monitoring**
+- HTML health endpoint at `/health`
+- JSON health endpoint at `/health.json` with timestamp
+- Automated health probes every 30 seconds (configurable)
+- Multi-region health check distribution
+
+### Compliance & Standards
+
+- **Security**: Follows Azure Security Benchmark guidelines
+- **Privacy**: No personal data collection by default
+- **Availability**: Designed for 99.99% uptime SLA
+- **Performance**: Optimized for Core Web Vitals metrics
+- **Accessibility**: Semantic HTML structure for screen readers
 
 ## 🔗 Useful Links
 
